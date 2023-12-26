@@ -17,39 +17,36 @@
 #include <uapi/linux/ip.h>
 #include <linux/socket.h>
 #include <linux/string.h>
-#include "bpf_helpers.h"
-#include "bpf_endian.h"
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
 
 #define DEBUG 1
-#define bpf_printk(fmt, ...)                       \
-	({                                             \
-		char ____fmt[] = fmt;                      \
-		bpf_trace_printk(____fmt, sizeof(____fmt), \
-						 ##__VA_ARGS__);           \
-	})
-struct bpf_map_def SEC("maps") cong_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(long),
-	.value_size = 10,
-	.max_entries = 100,
-	.map_flags = BPF_F_NO_PREALLOC,
-};
-struct bpf_map_def SEC("maps") ip_cong_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(long),
-	.value_size = 10,
-	.max_entries = 100,
-	.map_flags = BPF_F_NO_PREALLOC,
-};
+#define MAX_SIZE 20
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, sizeof(long));
+	__type(value, char[MAX_SIZE]);
+	__uint(max_entries, 100);
+	__uint(pinning, LIBBPF_PIN_BY_NAME);
+} cong_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, sizeof(long));
+	__type(value, char[MAX_SIZE]);
+	__uint(max_entries, 100);
+	__uint(pinning, LIBBPF_PIN_BY_NAME);
+} ip_cong_map SEC(".maps");
 
 static inline void init_map()
 {
 	long key0 = 0;
-	char a[] = "illinois";
+	char a[MAX_SIZE] = "bbr";
 	bpf_map_update_elem(&cong_map, &key0, a, BPF_ANY);
 	//本ip对应的数字
-	long ikey = 3232252746;
-	char b[] = "dctcp";
+	long ikey = 1681915905;
+	char b[MAX_SIZE] = "dctcp";
 	bpf_map_update_elem(&ip_cong_map, &ikey, b, BPF_ANY);
 }
 SEC("sockops")

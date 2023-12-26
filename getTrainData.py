@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-# !/usr/bin/env python
+#!/usr/bin/python
 
 
+import argparse
 import subprocess
 import numpy as np
 import threading
@@ -35,7 +36,7 @@ class OnlineServer:
         self.changeCong = CDLL('./transfer_cc.so')
 
     def runTshark(self):
-        cmd = ['/usr/src/python/mytcpack.py']
+        cmd = ['sudo', 'python', '/usr/src/python/mytcpack.py']
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
         while True:
@@ -43,11 +44,13 @@ class OnlineServer:
                 lawline = proc.stdout.readline()
                 line = str(lawline, encoding="utf-8")
                 line = line.strip()
+                # print("read line from cmd ", line)
 
                 if not line:
                     None
                 else:
                     if self.write < self.bufferSize:
+                        # print("Tshark reads output from mytcpack.py")
                         self.buffer.append(line)
                         self.write += 1
                     else:
@@ -83,6 +86,7 @@ class OnlineServer:
         while True:
 
             if self.read < self.write:
+                # print("reader reads data from line")
                 line = self.buffer[self.read % self.bufferSize]
                 readData = self.getData(line)
                 key = readData['port']
@@ -319,8 +323,13 @@ class readThread(threading.Thread):
 def writeTrainData(path, object):
     object.bashWriteTrainData(path)
 
+# get cca from argparser
+parser = argparse.ArgumentParser()
+parser.add_argument('--cca', type=str, default="cubic")
+args = parser.parse_args()
+cca = args.cca
 
-online = OnlineServer(200, "bbr")
+online = OnlineServer(200, cca)
 tshark = tSharkThread(online)
 read = readThread(online)
 tshark.start()

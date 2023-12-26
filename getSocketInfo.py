@@ -1,10 +1,10 @@
-#!/usr/libexec/platform-python
+#!/usr/bin/python
 
 from __future__ import print_function
 from bcc import BPF
 import argparse
 from time import strftime
-from socket import inet_ntop, AF_INET, AF_INET6
+from socket import inet_ntop, inet_pton, AF_INET, AF_INET6
 from struct import pack
 import ctypes as ct
 from time import sleep
@@ -119,12 +119,14 @@ struct ipv6_flow_key_t {
     u16 dport;
 };
 BPF_HASH(ipv6_count, struct ipv6_flow_key_t);
+
 static int trace_event(struct pt_regs *ctx, struct sock *skp)
 {
-    if (skp == NULL)
+    if (skp == NULL){
         return 0;
+    }
     u32 pid = bpf_get_current_pid_tgid() >> 32;
-    if(skp->__sk_common.skc_num != 10020){
+    if(skp->__sk_common.skc_num != 12345){
         return 0;
     }
     // pull in details
@@ -344,10 +346,13 @@ def print_ipv4_event(cpu, data, size):
     event = ct.cast(data, ct.POINTER(Data_ipv4)).contents
     t = time.time()
     print("\ntime: %d\n"%(int(round(t * 1000))))
+    # print("addr in int: %d" % (event.saddr))
+    # print("addr in byte: %s\n" % inet_ntop(AF_INET, pack('I', event.saddr)))
+    # print("addr in byte: %s\n" % inet_ntop(AF_INET, event.saddr))
     print(
         "%d;%s;%d;%s;%d;%d;%d;%d;%d;%d;%d; %d;%d;%d;%s;%s;%d;%d;%d" % (
             event.tstamp,
-            "%s" % (inet_ntop(AF_INET4, event.saddr)), event.lport, "%s" % (inet_ntop(AF_INET4, event.daddr)),
+            "%s" % (inet_ntop(AF_INET, pack('I', event.saddr))), event.lport, "%s" % (inet_ntop(AF_INET, pack('I', event.daddr))),
             event.dport,
             event.srtt, event.mdev, event.min_rtt, event.inflight, event.total_lost, event.total_retrans,event.rcv_buf,event.snd_buf,event.snd_cwnd,
             tcpstate[event.state],
@@ -358,6 +363,8 @@ def print_ipv6_event(cpu, data, size):
     event = ct.cast(data, ct.POINTER(Data_ipv6)).contents
     t = time.time()
     print("\ntime: %d\n" % (int(round(t * 1000))))
+    # print("addr in int: %d" % (event.saddr))
+    # print("addr in byte: %s\n" % inet_ntop(AF_INET6, event.saddr))
     print(
         "%d;%s;%d;%s;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%s;%s;%d;%d;%d" % (
             event.tstamp,
@@ -380,12 +387,20 @@ def depict_cnt(counts_tab, l3prot='ipv4'):
 
         print("%s %10d" % (depict_key, v.value))
 
+def print_ack_event(cpu, data, size):
+    event = b["ack_event"].event(data)
+    print("ack test output: x: %d, y: %d, test: %d" % (event.x, event.y, event.test))
+
 
 # initialize BPF
 b = BPF(text=bpf_text)
+
 b.attach_kprobe(event="tcp_ack", fn_name="trace_ack")
+
+
 b["ipv4_events"].open_perf_buffer(print_ipv4_event)
 b["ipv6_events"].open_perf_buffer(print_ipv6_event)
+print("Tracing connect ... Hit Ctrl-C to end")
 while 1:
     try:
         b.perf_buffer_poll()

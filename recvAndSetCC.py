@@ -11,7 +11,7 @@ import socket
 import pickle
 import struct
 import copy
-import threadpool
+import xgboost
 from ctypes import *
 from apscheduler.schedulers.blocking import BlockingScheduler
 from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED
@@ -27,18 +27,17 @@ maxPactingRate = 4294967295
 ccNameMap = {0: "bbr",
              1: "cubic",
              2: "illinois",
-             3: "c2tcp",
-             4: "westwood",
-             5: "vegas"}
+             3: "westwood",
+             4: "vegas"}
 
-ccFileMap = {0: "/usr/src/python/traindata/bbr.pickle",
-             1: "/usr/src/python/traindata/cubic.pickle",
-             2: "/usr/src/python/traindata/illinois.pickle",
-             3: "/usr/src/python/traindata/c2tcp.pickle",
-             4: "/usr/src/python/traindata/westwood.pickle",
-             5: "/usr/src/python/traindata/vegas.pickle"
+ccFileMap = {0: "/usr/src/python/model/v2/bbr.json",
+             1: "/usr/src/python/model/v2/cubic.json",
+             2: "/usr/src/python/model/v2/illinois.json",
+             3: "/usr/src/python/model/v2/westwood.json",
+             4: "/usr/src/python/model/v2/vegas.json"
              }
-pickleMap = {}
+
+jsonMap = {}
 
 
 class OnlineServer:
@@ -56,12 +55,13 @@ class OnlineServer:
         self.flowStaticData[0] = {}
         self.changeCong = CDLL('./transfer_cc.so')
         for cc in ccFileMap:
-            with open(ccFileMap[cc], "rb") as fr:
-                p = pickle.load(fr)
-                pickleMap[cc] = p
+            # new method to load
+            p = xgboost.Booster()
+            p.load_model(ccFileMap[cc])
+            jsonMap[cc] = p
 
     def runTshark(self):
-        cmd = ['/usr/src/python/getSocketInfo.py']
+        cmd = ['sudo', 'python', '/usr/src/python/mytcpack.py']
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
         while True:
@@ -140,6 +140,7 @@ class OnlineServer:
                         del preCCMap[key]
 
                     if key in self.flowStaticData:
+                        # print("[DEBUG]:1")
                         self.flowStaticData[key]['delivered'].append(int(readData['delivered']))
                         self.flowStaticData[key]['rcvBuf'].append(int(readData['rcv_buf']))
                         self.flowStaticData[key]['sndBuf'].append(int(readData['snd_buf']))
@@ -156,6 +157,7 @@ class OnlineServer:
                                 self.flowStaticData[key]['max_pacing_rate'] == 0):
                             self.flowStaticData[key]['max_pacing_rate'] = int(readData['pacing_rate'])
                         else:
+                            # print("[DEBUG]:2")
                             self.flowStaticData[key]['max_pacing_rate'] = max(int(readData['pacing_rate']),
                                                                               self.flowStaticData[key][
                                                                                   'max_pacing_rate'])
@@ -164,6 +166,7 @@ class OnlineServer:
                             t = time.time()
                             self.flowStaticData[key]['time'] = int(round(t * 1000))
                             countIndex = self.flowStaticData[key]['countIndex']
+                            # print(f"[DEBUG]:3 {countIndex}")
                             self.intervalAction(countIndex, key)
                             self.flowStaticData[key] = self.newFlowStaticData()
                             countIndex += 1
@@ -194,10 +197,15 @@ class OnlineServer:
         return flowStaticPerData
 
     def runPredic(self,cc,rewards,npData):
-        newModel = pickleMap[cc]
-        y_pred = newModel.predict(npData).tolist()
-        print("predic: " + str(y_pred) + " cc:" + str(cc))
-        rewards[cc] = float(y_pred[0])
+        try:
+            newModel = jsonMap[cc]
+            # y_pred = newModel.predict(npData).tolist()
+            # use DMatrix
+            y_pred = newModel.predict(xgboost.DMatrix(npData))
+            print("predic: " + str(y_pred) + " cc:" + str(cc))
+            rewards[cc] = float(y_pred[0][0])
+        except Exception as e:
+            print("[DEBUG]:5 " + str(e))
 
     def predicCC(self, trainData, key):
         data = trainData
@@ -207,7 +215,7 @@ class OnlineServer:
         npData = np.array(termTrainData).reshape(1, 7)
         rewards = {}
         allTask = []
-        for cc in pickleMap:
+        for cc in jsonMap:
             print("cc::"+str(cc))
             allTask.append(self.threadPool.submit(self.runPredic, cc, rewards,npData))
         wait(allTask, return_when=ALL_COMPLETED)
@@ -240,7 +248,7 @@ class OnlineServer:
         return result
 
     def intervalAction(self, countIndex, key):
-
+        # print(f"[DEBUG]:4 {countIndex}")
         preCountIndex = countIndex - 1
         preTrainKey = key + "_" + str(preCountIndex)
         preTrainData = None
