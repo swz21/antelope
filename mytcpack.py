@@ -140,7 +140,7 @@ static int trace_event(struct pt_regs *ctx, struct sock *skp)
     if (skp == NULL)
         return 0;
     u32 pid = bpf_get_current_pid_tgid() >> 32;
-    if(skp->__sk_common.skc_num != 10020){
+    if(skp->__sk_common.skc_num != 12345){
         return 0;
     }
     // pull in details
@@ -372,7 +372,7 @@ def print_ipv4_event(cpu, data, size):
     print(
         "%d;%s;%d;%s;%d;%d;%d;%d;%d;%d;%d; %d;%d;%d;%s;%s;%d;%d;%d" % (
             event.tstamp,
-            "%s" % (inet_ntop(AF_INET4, event.saddr)), event.lport, "%s" % (inet_ntop(AF_INET4, event.daddr)),
+            "%s" % (inet_ntop(AF_INET, pack('I', event.saddr))), event.lport, "%s" % (inet_ntop(AF_INET, pack('I', event.daddr))),
             event.dport,
             event.srtt, event.mdev, event.min_rtt, event.inflight, event.total_lost, event.total_retrans,event.rcv_buf,event.snd_buf,event.snd_cwnd,
             tcpstate[event.state],
