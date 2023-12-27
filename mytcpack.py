@@ -140,7 +140,7 @@ static int trace_event(struct pt_regs *ctx, struct sock *skp)
     if (skp == NULL)
         return 0;
     u32 pid = bpf_get_current_pid_tgid() >> 32;
-    if(skp->__sk_common.skc_num != 12345){
+    if(skp->__sk_common.skc_num != {port}){
         return 0;
     }
     // pull in details
@@ -180,7 +180,7 @@ int trace_ack(struct pt_regs *ctx, struct sock *sk)
     trace_event(ctx, sk);
     return 0;
 }
-"""
+""".format(port = 12345)
 
 struct_init = {'ipv4':
                    {'trace':

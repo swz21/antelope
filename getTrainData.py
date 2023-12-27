@@ -19,7 +19,8 @@ lock = threading.Lock()
 ipCongMap = {}
 alf = 0.9
 timeInterval = 1
-
+TRANSFER_CC_PATH = "'./transfer_cc.so'"
+MY_TCP_ACK_PATH = "/home/vagrant/antelope/mytcpack.py"
 
 class OnlineServer:
     def __init__(self, bufferSize, ccName):
@@ -33,10 +34,10 @@ class OnlineServer:
         self.trainLawData = {}
         self.flowStaticData = {}
         self.flowStaticData[0] = {}
-        self.changeCong = CDLL('./transfer_cc.so')
+        self.changeCong = CDLL(TRANSFER_CC_PATH)
 
     def runTshark(self):
-        cmd = ['sudo', 'python', '/usr/src/python/mytcpack.py']
+        cmd = ['sudo', 'python', MY_TCP_ACK_PATH]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
         while True:

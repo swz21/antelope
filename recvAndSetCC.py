@@ -30,15 +30,16 @@ ccNameMap = {0: "bbr",
              3: "westwood",
              4: "vegas"}
 
-ccFileMap = {0: "/usr/src/python/model/v2/bbr.json",
-             1: "/usr/src/python/model/v2/cubic.json",
-             2: "/usr/src/python/model/v2/illinois.json",
-             3: "/usr/src/python/model/v2/westwood.json",
-             4: "/usr/src/python/model/v2/vegas.json"
+ccFileMap = {0: "/home/vagrant/antelope/models/bbr.json",
+             1: "/home/vagrant/antelope/models/cubic.json",
+             2: "/home/vagrant/antelope/models/illinois.json",
+             3: "/home/vagrant/antelope/models/westwood.json",
+             4: "/home/vagrant/antelope/models/vegas.json"
              }
 
 jsonMap = {}
-
+TRANSFER_CC_PATH = "'./transfer_cc.so'"
+MY_TCP_ACK_PATH = "/home/vagrant/antelope/mytcpack.py"
 
 class OnlineServer:
     def __init__(self, bufferSize, ccName):
@@ -53,7 +54,7 @@ class OnlineServer:
         self.trainLawData = {}
         self.flowStaticData = {}
         self.flowStaticData[0] = {}
-        self.changeCong = CDLL('./transfer_cc.so')
+        self.changeCong = CDLL(TRANSFER_CC_PATH)
         for cc in ccFileMap:
             # new method to load
             p = xgboost.Booster()
@@ -61,7 +62,7 @@ class OnlineServer:
             jsonMap[cc] = p
 
     def runTshark(self):
-        cmd = ['sudo', 'python', '/usr/src/python/mytcpack.py']
+        cmd = ['sudo', 'python', MY_TCP_ACK_PATH]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 
         while True:
