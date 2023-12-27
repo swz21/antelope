@@ -19,7 +19,7 @@ lock = threading.Lock()
 ipCongMap = {}
 alf = 0.9
 timeInterval = 1
-TRANSFER_CC_PATH = "'/home/vagrant/antelope/transfer_cc.so'"
+TRANSFER_CC_PATH = "/home/vagrant/antelope/transfer_cc.so"
 MY_TCP_ACK_PATH = "/home/vagrant/antelope/mytcpack.py"
 
 class OnlineServer:

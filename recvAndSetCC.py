@@ -38,7 +38,7 @@ ccFileMap = {0: "/home/vagrant/antelope/models/bbr.json",
              }
 
 jsonMap = {}
-TRANSFER_CC_PATH = "'/home/vagrant/antelope/transfer_cc.so'"
+TRANSFER_CC_PATH = "/home/vagrant/antelope/transfer_cc.so"
 MY_TCP_ACK_PATH = "/home/vagrant/antelope/mytcpack.py"
 
 class OnlineServer:
