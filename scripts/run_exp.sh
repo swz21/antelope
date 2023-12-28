@@ -61,9 +61,13 @@ run_antelope_service() {
 }
 
 kill_antelope_processes() {
+    echo "[EXIT][ANTELOPE] kill antelope main processes"
     pids=$(pgrep -f ${myname})
     kill $pids
-    echo "Processes killed."
+    echo "[EXIT][ANTELOPE] kill antelope background processes"
+    pids=$(pgrep -f mytcpack.py)
+    kill $pids
+    echo "[EXIT][ANTELOPE] succeed to kill all processes and exit"
 }
 
 for arg in "$@"; do
