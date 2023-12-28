@@ -40,7 +40,7 @@ ccFileMap = {0: "/home/vagrant/antelope/models/bbr.json",
 jsonMap = {}
 TRANSFER_CC_PATH = "/home/vagrant/antelope/transfer_cc.so"
 MY_TCP_ACK_PATH = "/home/vagrant/antelope/mytcpack.py"
-
+TRAIN_DATA_PATH = "/home/vagrant/antelope/train_data/"
 class OnlineServer:
     def __init__(self, bufferSize, ccName):
         self.bufferSize = bufferSize
@@ -338,7 +338,8 @@ class OnlineServer:
             trainDataCCMap[int(data['predictCC'])].append(termTrainData)
         for cc in trainDataCCMap.keys():
             if (trainDataCCMap[cc].__len__() > 0):
-                fileName = "/usr/src/python/traindata/"+ccNameMap[cc]+"_output.txt"
+                fileName = TRAIN_DATA_PATH+ccNameMap[cc]+"_output.txt"
+                # fileName = "/usr/src/python/traindata/"+ccNameMap[cc]+"_output.txt"
                 self.writeData(fileName, trainDataCCMap[cc])
         print("write end " + str(delKeys))
         for key in delKeys:

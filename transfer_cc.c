@@ -19,7 +19,7 @@ char cong[5][9]={"bbr","cubic","illinois","westwood", "vegas"};
 void updatehash(unsigned long key, char *val)
 {
         char cmd[1000];
-        sprintf(cmd, "sudo ./change_cong_map %lu %s", key, val);
+        sprintf(cmd, "sudo /home/vagrant/antelope/change_cong_map %lu %s", key, val);
         
 
         char data[10] = {0};
@@ -38,11 +38,6 @@ void updatehash(unsigned long key, char *val)
 {
     printf("enter update cong hash\n");
     printf("pv:%d,ipv:%d,pk:%ld,beishu:%ld,yushu:%ld\n", pv,ipv,pk,beishu,yushu);
-    if (sem_id == 0)
-    {
-        init();
-    }
-    printf("id: %d\n", sem_id);
 
     char *pval=cong[pv];
     char *ipval=cong[ipv];
