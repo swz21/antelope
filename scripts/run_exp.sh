@@ -50,16 +50,6 @@ run_iperf_client() {
     iperf3 -c 127.0.0.1 -p 12345 -t 5 -P 10 -R
 }
 
-run_antelope_training() {
-    (load_bpf) &
-    (get_training_data) &
-}
-
-run_antelope_service() {
-    (load_bpf) &
-    (run_cc_server) &
-}
-
 kill_antelope_processes() {
     echo "[EXIT][ANTELOPE] kill antelope processes"
     pids="$(pgrep -f ${myname})"
@@ -75,25 +65,23 @@ for arg in "$@"; do
         -h|--help)
             echo "Usage: run_exp.sh [options]"
             echo "Options:"
+            echo "  -l, --load: load bpf program"
             echo "  -t, --train: get training data"
             echo "  -r, --run: run antelope service"
             echo "  -k, --kill: kill antelope processes"
             exit 0
             ;;
+        -l|--load)
+            load_bpf &
+            ;;
         -t|--train)
-            run_antelope_training
+            get_training_data &
             ;;
         -s|--server)
-            run_antelope_service
+            run_cc_server &
             ;;
         -k|--kill)
             kill_antelope_processes
-            ;;
-        -nt)
-            get_training_data &
-            ;;
-        -ns)
-            run_cc_server &
             ;;
         *)
             echo "Unknown option: $arg"
