@@ -1,0 +1,137 @@
+#!/bin/bash
+
+enable_kern_config() {
+    IFS=" " read -r -a configs <<<"$1"
+    for cf in "${configs[@]}"; do
+        # sed -i "/$cf=/d" .config && echo "$cf=y" >>.config
+        scripts/config --enable "$cf"
+    done
+    # sed "/CONFIG_TUN=/d" .config && echo "CONFIG_TUN=y" >> .config
+}
+
+customize_kern() {
+    echo '[INSTALL][KERN] Kernel configuration...'
+
+    case $1 in
+    ubuntu)
+        echo "[INSTALL][KERN] Use pruned ubuntu configuration!"
+        cp ../.ubuntu.config .config
+        patch_bpf_kern
+        ;;
+    current)
+        echo "[INSTALL][KERN] Use configuration of current running kernel!"
+        sudo cp /boot/config-"$(uname -r)" .config
+        sudo chown vagrant:vagrant .config
+        make olddefconfig
+        ;;
+    orca)
+        echo "[INSTALL][KERN] Use configuration of orca!"
+        cp ../.ubuntu.config .config
+        patch_orca_kern
+        ;;
+    antelope)
+        echo "[INSTALL][KERN] Use configuration of antelope!"
+        cp ../.antelope.config .config
+        patch_antelope_kern
+        ;;
+    default|*)
+        echo "[INSTALL][KERN] Use default configuration with minimal patch!"
+        make defconfig
+        patch .config < ../.minimal-6.2.patch
+        ;;
+    esac
+
+    # echo "# MANNUL PATCH" >> .config
+    # cfs=("CONFIG_TUN" "CONFIG_NETFILTER_XT_MARK" "CONFIG_NF_TABLES" "CONFIG_NF_TABLES_INET" "CONFIG_NF_TABLES_NETDEV" "CONFIG_NF_TABLES_IPV4" "CONFIG_NF_TABLES_ARP" "CONFIG_IP_NF_IPTABLES" "CONFIG_IP_NF_ARPTABLES" "CONFIG_NF_CONNTRACK_MARK" "CONFIG_NETWORK_SECMARK" "CONFIG_NF_CONNTRACK_MARK" "CONFIG_NF_CONNTRACK_SECMARK" "CONFIG_NETFILTER_XT_MARK" "CONFIG_NETFILTER_XT_CONNMARK" "CONFIG_NETFILTER_XT_TARGET_CONNMARK" "CONFIG_NETFILTER_XT_TARGET_CONNSECMARK" "CONFIG_NETFILTER_XT_TARGET_HMARK" "CONFIG_NETFILTER_XT_TARGET_MARK" "CONFIG_NETFILTER_XT_TARGET_SECMARK" "CONFIG_NETFILTER_XT_MATCH_CONNMARK" "CONFIG_NETFILTER_XT_MATCH_MARK")
+    # enable_kern_config "${cfs[*]}"
+
+    scripts/config --set-str SYSTEM_TRUSTED_KEYS "" --set-str SYSTEM_REVOCATION_KEYS ""
+}
+
+patch_bpf_kern() {
+    cd /home/vagrant/kern_src/linux-6.2 || exit 1
+    echo '[INSTALL][KERN] Kernel patching...'
+    patch net/ipv4/bpf_tcp_ca.c < ../.bpf_tcp_ca.patch
+    echo "[INSTALL][KERN] Patching done!"
+}
+
+patch_orca_kern() {
+    cd /home/vagrant/kern_src/linux-6.2 || exit 1
+    echo '[INSTALL][KERN] Kernel patching...'
+    patch -p1 < ../orca-v6.2.patch
+    patch net/ipv4/bpf_tcp_ca.c < ../.bpf_tcp_ca.patch
+    echo "[INSTALL][KERN] Patching done!"
+}
+
+patch_antelope_kern() {
+    cd /home/vagrant/kern_src/linux-5.10.179 || exit 1
+    echo "[INSTALL][KERN] Kernel patching for antelope..."
+    patch -p2 < ../antelope-v5.10.179.patch
+    echo "[INSTALL][KERN] Patching done!"
+}
+
+build_customize_kern() {
+    local kern_config=${1:-default}
+    local kern_version=${2:-"6.2"}
+    cd "/home/vagrant/kern_src/linux-${kern_version}" || exit 1
+    echo '[INSTALL][KERN] Compiling the kernel...'
+    make -j"$(nproc)" -l4
+
+    echo '[INSTALL][KERN] Installing the kernel...'
+    sudo make modules_install
+    # Can use the under command to strips the symbols 
+    # without which initramfs gets too big and won’t boot.
+    # sudo make INSTALL_MOD_STRIP=1 modules_install
+    sudo make install
+    sudo make headers_install
+
+    case $kern_config in
+    antelope)
+        echo "[INSTALL][KERN] Moddify default grub"
+        sudo sed -i 's/GRUB_DEFAULT=0/GRUB_DEFAULT="1 >2"/' /etc/default/grub
+        sudo update-grub
+        echo "[INSTALL][KERN] Install antelope kernel done!"
+        ;;
+    default|*)
+        echo "[INSTALL][KERN] Install customized kernel done!"
+        ;;
+    esac
+
+    echo '[INSTALL][KERN] Reboot the machine (with vagrant reload).'
+}
+
+install_customize_kern() {
+    local kern_config=${1:-default}
+    local kern_version=${2:-"6.2"}
+    local major_version=$(echo "$kern_version" | cut -d. -f1)
+    echo '[INSTALL][KERN] Installing customized kernel...'
+    echo '[INSTALL][KERN] Kernel code extraction...'
+    cd /home/vagrant/kern_src || exit
+    if [ ! -f "./linux-${kern_version}.tar.xz" ]; then
+        wget -N -P ./ "https://cdn.kernel.org/pub/linux/kernel/v${major_version}.x/linux-${kern_version}.tar.xz"
+    fi
+    tar -Jxv -f "./linux-${kern_version}.tar.xz" -C ./
+    cd "./linux-${kern_version}" || exit
+
+    if [[ $# -gt 1 ]]; then
+        shift
+        echo "[INSTALL][KERN] Ignoring extra arguments in kernel config customization: $*"
+    fi
+    customize_kern "$kern_config"
+    build_customize_kern "$kern_config" "$kern_version"
+}
+
+install_mainline() {
+    local kern_version=${1:-"6.2.0"}
+    echo '[INSTALL][KERN] Installing mainline kernel...'
+    if [[ $# -gt 1 ]]; then
+        shift
+        echo "[INSTALL][KERN] Ignoring extra arguments in mainline kernel installation: $*"
+    fi
+    echo "[INSTALL][KERN] Install mainline toolkit..."
+    sudo add-apt-repository ppa:cappelikan/ppa -y && sudo apt-get update -y
+    sudo apt install mainline -y
+    echo "[INSTALL][KERN] Kernel version: $kern_version"
+    sudo mainline --install "$kern_version"
+    echo "[INSTALL][KERN] Install mainline kernel done!"
+}

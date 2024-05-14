@@ -1,0 +1,46 @@
+diff --git a/linux-5.10.179/include/uapi/linux/bpf.h b/linux-5.10.179/include/uapi/linux/bpf.h
+index 2a2340238..3e1f6c4d5 100644
+--- a/linux-5.10.179/include/uapi/linux/bpf.h
++++ b/linux-5.10.179/include/uapi/linux/bpf.h
+@@ -4728,6 +4728,9 @@ enum {
+ 					 * by the kernel or the
+ 					 * earlier bpf-progs.
+ 					 */
++	BPF_SOCK_OPS_TCP_ACK_CB,
++	BPF_SOCK_OPS_TCL_CLOSE_CB,
++	BPF_BBR_ENTER,
+ };
+ 
+ /* List of TCP states. There is a build check in net/ipv4/tcp.c to detect
+diff --git a/linux-5.10.179/net/ipv4/tcp.c b/linux-5.10.179/net/ipv4/tcp.c
+index 6a0560a73..1fe007b69 100644
+--- a/linux-5.10.179/net/ipv4/tcp.c
++++ b/linux-5.10.179/net/ipv4/tcp.c
+@@ -1445,6 +1445,7 @@ int tcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
+ {
+ 	int ret;
+ 
++	tcp_call_bpf(sk, BPF_SOCK_OPS_TCP_ACK_CB, 0, NULL);
+ 	lock_sock(sk);
+ 	ret = tcp_sendmsg_locked(sk, msg, size);
+ 	release_sock(sk);
+@@ -2112,8 +2113,10 @@ int tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int nonblock,
+ 		return inet_recv_error(sk, msg, len, addr_len);
+ 
+ 	if (sk_can_busy_loop(sk) && skb_queue_empty_lockless(&sk->sk_receive_queue) &&
+-	    (sk->sk_state == TCP_ESTABLISHED))
++	    (sk->sk_state == TCP_ESTABLISHED)) {
+ 		sk_busy_loop(sk, nonblock);
++		tcp_call_bpf(sk, BPF_SOCK_OPS_TCP_ACK_CB, 0, NULL);
++	}
+ 
+ 	lock_sock(sk);
+ 
+@@ -2442,6 +2445,7 @@ static int tcp_close_state(struct sock *sk)
+ 
+ 	tcp_set_state(sk, ns);
+ 
++	tcp_call_bpf(sk, BPF_SOCK_OPS_TCL_CLOSE_CB, 0, NULL);
+ 	return next & TCP_ACTION_FIN;
+ }
+ 

@@ -1,0 +1,115 @@
+#!/bin/bash
+
+myname=${0##*/}
+# shellcheck disable=SC1091
+source "scripts/utils"
+
+
+setup_antelope_vm() {
+    echo '[SETUP][VM] Setup Antelope re-produce...'
+    local change_source=$1
+    echo '[SETUP][VM] Prepare folders...'
+    mk_folder /home/vagrant/tools && chown -R vagrant:vagrant tools
+
+    echo '[SETUP][VM] Installing some essential dependencies...'
+    if [ "$change_source" = true ]; then
+        echo '[SETUP][VM] Change source...'
+        change_source_list
+    fi
+    sudo apt-get update -y
+    sudo apt install make libxt6 libxmu6 build-essential libncurses-dev bison flex libssl-dev libelf-dev python-dev-is-python3 -y
+
+    cd /home/vagrant || exit 1
+
+    echo '[SETUP][VM] Install pahole to enable btf...'
+    if ! scripts/install pahole; then
+        exit 1
+    fi
+
+    echo '[SETUP][VM] Install customized 5.10.179 linux kernel...'
+    # scripts/install antelope-kern --customize-kern-config antelope
+    scripts/install kern --customize-kern-config antelope --kern-version "5.10.179"
+
+    echo '[SETUP][VM] Installation done. Reboot the machine with vagrant reload'
+    sudo reboot
+}
+
+setup_antelope_exp() {
+    # MYTODO
+    echo "[SETUP][ANTELOPE] Setup antelope experiment environment..."
+    echo "[SETUP][ANTELOPE] Installing required tools..."
+    scripts/install antelope bpftool --kern-version "5.10.179"
+    echo "[SETUP][ANTELOPE] Set up environments..."
+}
+
+
+
+setup_bpf() {
+    echo '[SETUP][BPF] Setup bpf...'
+    echo '[SETUP][BPF] Installing required tools...'
+    scripts/install llvm bpftool
+    echo '[SETUP][BPF] Setup bpf done.'
+}
+
+
+usage() {
+    cat >&2 <<EOL
+Setup envs related to this project.
+Usage:
+$myname options envs ...
+
+options:
+	--help|-h                   Print this help message
+
+envs:
+    antelope-vm                 Setup vm envs for antelope(kernel side)
+    antelope-exp                Setup antelope experiment envs
+    bpf                         Setup bpf envs
+
+    envs can be repeted to setup successively
+
+Example:
+    $myname vm
+EOL
+    exit 1
+}
+
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    --help | -h)
+        usage
+        exit 1
+        ;;
+    --change_src)
+        CHANGE_SOURCE=true
+        shift # past argument
+        ;;
+    --* | -*)
+        echo "Unknown option $1"
+        usage
+        exit 1
+        ;;
+    *)
+        POSITIONAL_ARGS+=("$1") # save positional arg
+        shift                   # past argument
+        ;;
+    esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+for arg in "$@"; do
+    case $arg in
+    antelope-vm)
+        setup_antelope_vm "$CHANGE_SOURCE"
+        ;;
+    antelope-exp)
+        setup_antelope_exp
+        ;;
+    bpf)
+        setup_bpf
+        ;;
+    esac
+done
