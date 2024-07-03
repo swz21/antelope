@@ -271,7 +271,7 @@ class OnlineServer:
 
 
         if (trainData.__len__() > 0):
-            fileName = "/usr/src/python/traindata/youxian_" + self.ccName
+            fileName = "/home/vagrant/antelope/train/" + self.ccName
             self.writeData(fileName, trainData)
         print("write end " + str(delKeys))
         for key in delKeys:
