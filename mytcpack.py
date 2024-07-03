@@ -374,7 +374,7 @@ def print_ipv4_event(cpu, data, size):
             event.tstamp,
             "%s" % (inet_ntop(AF_INET, pack('I', event.saddr))), event.lport, "%s" % (inet_ntop(AF_INET, pack('I', event.daddr))),
             event.dport,
-            event.srtt, event.mdev, event.min_rtt, event.inflight, event.total_lost, event.total_retrans,event.rcv_buf,event.snd_buf,event.snd_cwnd,
+            int(event.srtt / 8.0), event.mdev, event.min_rtt, event.inflight, event.total_lost, event.total_retrans,event.rcv_buf,event.snd_buf,event.snd_cwnd,
             tcpstate[event.state],
             state[event.tcp_state],event.sk_pacing_rate,event.sk_max_pacing_rate,event.delivered))
 

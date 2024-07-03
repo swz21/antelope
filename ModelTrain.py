@@ -19,8 +19,8 @@ args = parser.parse_args()
 CCA = args.cca
 # CCA = "bbr"
 
-DATAPATH = "/usr/src/python/traindata/youxian_" + CCA
-MODELPATH = "/usr/src/python/traindata/" + CCA + ".pickle"
+DATAPATH = "/home/sunwz/antelope/train/" + CCA
+MODELPATH = "/home/sunwz/antelope/traindata/" + CCA + ".pickle"
 
 
 def loadData(dir):
