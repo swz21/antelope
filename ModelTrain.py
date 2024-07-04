@@ -20,7 +20,7 @@ CCA = args.cca
 # CCA = "bbr"
 
 DATAPATH = "/home/sunwz/antelope/train/" + CCA
-MODELPATH = "/home/sunwz/antelope/traindata/" + CCA + ".pickle"
+MODELPATH = "/home/sunwz/antelope/train/" + CCA + ".json"
 
 
 def loadData(dir):
@@ -57,8 +57,9 @@ y_train_label = le.fit_transform(y_train)
 y_test_label = le.fit_transform(y_test)
 
 ### fit model for train data
-model = XGBClassifier(n_estimators=40, max_depth=3, subsample=1, gamma=1, learning_rate=0.15, tree_method='gpu_hist')
+model = XGBClassifier(n_estimators=40, max_depth=3, subsample=1, gamma=1, learning_rate=0.15)
 model.fit(x_train, y_train_label)
-with open(MODELPATH, "wb") as fw:
-    pickle.dump(model, fw)
+# with open(MODELPATH, "wb") as fw:
+#     pickle.dump(model, fw)
+model.save_model(MODELPATH)
 
